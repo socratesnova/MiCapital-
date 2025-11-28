@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: micapital_postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your-super-secret-password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Supabase Studio (Database UI)
+  studio:
+    image: supabase/studio:latest
+    container_name: micapital_studio
+    environment:
+      POSTGRES_PASSWORD: your-super-secret-password
+      SUPABASE_URL: http://localhost:54321
+      STUDIO_PG_META_URL: http://meta:8080
+    ports:
+      - "54323:3000"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # PostgREST (Auto-generated REST API)
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: micapital_postgrest
+    environment:
+      PGRST_DB_URI: postgres://postgres:your-super-secret-password@db:5432/postgres
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters
+    ports:
+      - "54321:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
