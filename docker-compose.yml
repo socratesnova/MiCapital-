@@ -1,9 +1,37 @@
 version: '3.8'
 
 services:
+  # Next.js Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: micapital_frontend
+    ports:
+      - "3002:3000"
+    volumes:
+      - .:/app
+      - /app/.next
+    environment:
+      # Keycloak Configuration
+      - KEYCLOAK_CLIENT_ID=micapital-frontend
+      - KEYCLOAK_CLIENT_SECRET=Pqf4yLkcDWiTeI4f6uziNkT8UDDXaPHw
+      - KEYCLOAK_ISSUER=http://localhost:8080/realms/micapital
+      # NextAuth Configuration
+      - NEXTAUTH_URL=http://localhost:3002
+      - NEXTAUTH_SECRET=myS3cr3tK3y!2024$R4nd0mStr1ng#XyZ
+      # Supabase (legacy - keeping for now)
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:3002/supabase
+      - SUPABASE_URL=http://localhost:3000/supabase
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsaG9zdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNjQxNzY5MjAwLCJleHAiOjE5NTczNDUyMDB9.dc6Jq_9kH6CbkJvh1-8rF5rF-kP6F6KqJxZ6xJLN0Yw}
+    depends_on:
+      - gotrue
+      - postgrest
+    restart: unless-stopped
+
   # PostgreSQL Database
   db:
-    image: postgres:15-alpine
+    image: supabase/postgres:15.1.1.2
     container_name: micapital_postgres
     environment:
       POSTGRES_DB: postgres
@@ -26,7 +54,7 @@ services:
     container_name: micapital_studio
     environment:
       POSTGRES_PASSWORD: your-super-secret-password
-      SUPABASE_URL: http://localhost:54321
+      SUPABASE_URL: http://postgrest:3000
       STUDIO_PG_META_URL: http://meta:8080
     ports:
       - "54323:3000"
@@ -44,7 +72,30 @@ services:
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters
     ports:
-      - "54321:3000"
+      - "54322:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # GoTrue (Supabase Auth)
+  gotrue:
+    image: supabase/gotrue:v2.158.1
+    container_name: micapital_gotrue
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:your-super-secret-password@db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:3002
+      GOTRUE_URI_ALLOW_LIST: http://localhost:3000,http://localhost:3002
+      # Update External URL to point to the Next.js proxy
+      API_EXTERNAL_URL: http://localhost:3002/supabase/auth/v1
+      GOTRUE_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'false'
+      GOTRUE_MAILER_AUTOCONFIRM: 'true'
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: 'true'
     depends_on:
       db:
         condition: service_healthy

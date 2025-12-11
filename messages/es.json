@@ -1,0 +1,50 @@
+{
+    "Auth": {
+        "signin": {
+            "title": "Bienvenido de nuevo",
+            "subtitle": "Inicia sesión en tu cuenta de MiCapital",
+            "emailLabel": "Correo electrónico",
+            "passwordLabel": "Contraseña",
+            "rememberMe": "Recuérdame",
+            "forgotPassword": "¿Olvidaste tu contraseña?",
+            "submitButton": "Iniciar sesión",
+            "loading": "Iniciando sesión...",
+            "orContinueWith": "O continúa con correo",
+            "continueWithGoogle": "Continuar con Google",
+            "noAccount": "¿No tienes una cuenta?",
+            "signUpLink": "Regístrate gratis",
+            "errors": {
+                "invalidCredentials": "Correo o contraseña inválidos",
+                "generic": "Error al iniciar sesión"
+            }
+        },
+        "signup": {
+            "title": "Crear Cuenta",
+            "subtitle": "Comienza tu viaje con MiCapital",
+            "firstNameLabel": "Nombre",
+            "lastNameLabel": "Apellido",
+            "emailLabel": "Correo electrónico",
+            "passwordLabel": "Contraseña",
+            "submitButton": "Crear Cuenta",
+            "loading": "Creando cuenta...",
+            "orSignUpWith": "O regístrate con correo",
+            "signUpWithGoogle": "Registrarse con Google",
+            "hasAccount": "¿Ya tienes una cuenta?",
+            "signInLink": "Iniciar sesión",
+            "errors": {
+                "generic": "Error al registrarse"
+            }
+        }
+    },
+    "Dashboard": {
+        "title": "Resumen Financiero",
+        "welcome": "¡Bienvenido de nuevo, {name}! Aquí está tu resumen financiero.",
+        "netWorth": "Patrimonio Neto",
+        "income": "Ingresos (Mes)",
+        "expenses": "Gastos (Mes)",
+        "savings": "Ahorros (Mes)"
+    },
+    "Common": {
+        "loading": "Cargando..."
+    }
+}

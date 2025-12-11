@@ -1,0 +1,50 @@
+{
+    "Auth": {
+        "signin": {
+            "title": "Welcome Back",
+            "subtitle": "Sign in to your MiCapital account",
+            "emailLabel": "Email address",
+            "passwordLabel": "Password",
+            "rememberMe": "Remember me",
+            "forgotPassword": "Forgot your password?",
+            "submitButton": "Sign in",
+            "loading": "Signing in...",
+            "orContinueWith": "Or continue with email",
+            "continueWithGoogle": "Continue with Google",
+            "noAccount": "Don't have an account?",
+            "signUpLink": "Sign up for free",
+            "errors": {
+                "invalidCredentials": "Invalid email or password",
+                "generic": "Failed to sign in"
+            }
+        },
+        "signup": {
+            "title": "Create Account",
+            "subtitle": "Start your journey with MiCapital",
+            "firstNameLabel": "First Name",
+            "lastNameLabel": "Last Name",
+            "emailLabel": "Email address",
+            "passwordLabel": "Password",
+            "submitButton": "Create Account",
+            "loading": "Creating account...",
+            "orSignUpWith": "Or sign up with email",
+            "signUpWithGoogle": "Sign up with Google",
+            "hasAccount": "Already have an account?",
+            "signInLink": "Sign in",
+            "errors": {
+                "generic": "Failed to sign up"
+            }
+        }
+    },
+    "Dashboard": {
+        "title": "Finance Overview",
+        "welcome": "Welcome back, {name}! Here's your financial summary.",
+        "netWorth": "Net Worth",
+        "income": "Income (Month)",
+        "expenses": "Expenses (Month)",
+        "savings": "Savings (Month)"
+    },
+    "Common": {
+        "loading": "Loading..."
+    }
+}

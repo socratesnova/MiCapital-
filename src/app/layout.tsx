@@ -1,25 +1,12 @@
-import { Outfit } from 'next/font/google';
-import './globals.css';
+import React from 'react';
 
-import { SidebarProvider } from '@/context/SidebarContext';
-import { ThemeProvider } from '@/context/ThemeContext';
-
-const outfit = Outfit({
-  subsets: ["latin"],
-});
-
+// The root layout is required when using a root not-found.tsx.
+// Since all our pages are within [locale], this layout just passes children through.
+// The actual html/body tags are defined in [locale]/layout.tsx.
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${outfit.className} dark:bg-gray-900`}>
-        <ThemeProvider>
-          <SidebarProvider>{children}</SidebarProvider>
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return children;
 }

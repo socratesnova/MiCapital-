@@ -10,11 +10,11 @@ DROP TABLE IF EXISTS investments CASCADE;
 DROP TABLE IF EXISTS debts CASCADE;
 DROP TABLE IF EXISTS recurring_transactions CASCADE;
 DROP TABLE IF EXISTS accounts CASCADE;
-$$ LANGUAGE sql STABLE;
-
-CREATE OR REPLACE FUNCTION auth.email() RETURNS text AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text;
-$$ LANGUAGE sql STABLE;
+DROP TABLE IF EXISTS categories CASCADE;
+DROP TABLE IF EXISTS goals CASCADE;
+DROP TABLE IF EXISTS budgets CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS user_profiles CASCADE;
 
 -- =============================================================================
 -- USER PROFILES TABLE
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 );
 
 -- =============================================================================
--- TRANSACTIONS TABLE (Updated with user_id)
+-- TRANSACTIONS TABLE
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,14 +44,14 @@ CREATE TABLE IF NOT EXISTS transactions (
     description TEXT,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
-    payment_method VARCHAR(50), -- cash, credit_card, debit_card, bank_transfer
+    payment_method VARCHAR(50),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- =============================================================================
--- BUDGETS TABLE (Updated)
+-- BUDGETS TABLE
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS budgets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS budgets (
 );
 
 -- =============================================================================
--- GOALS TABLE (Updated)
+-- GOALS TABLE
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS goals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,35 +77,35 @@ CREATE TABLE IF NOT EXISTS goals (
     target_amount DECIMAL(12, 2) NOT NULL,
     current_amount DECIMAL(12, 2) DEFAULT 0,
     deadline DATE,
-    category VARCHAR(50), -- savings, investment, debt_payoff, travel, etc.
+    category VARCHAR(50),
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
-    priority INTEGER DEFAULT 0, -- 0=low, 1=medium, 2=high
+    priority INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- =============================================================================
--- CATEGORIES TABLE (Global + User-Specific)
+-- CATEGORIES TABLE
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES user_profiles(user_id) ON DELETE CASCADE, -- NULL for global categories
+    user_id UUID REFERENCES user_profiles(user_id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
     icon VARCHAR(50),
     color VARCHAR(20),
-    is_system BOOLEAN DEFAULT FALSE, -- System categories can't be deleted
+    is_system BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- =============================================================================
--- ACCOUNTS TABLE (Bank accounts, credit cards, etc.)
+-- ACCOUNTS TABLE
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES user_profiles(user_id) ON DELETE CASCADE,
     name VARCHAR(200) NOT NULL,
-    type VARCHAR(50) NOT NULL, -- checking, savings, credit_card, investment, loan
+    type VARCHAR(50) NOT NULL,
     balance DECIMAL(12, 2) DEFAULT 0,
     currency VARCHAR(3) DEFAULT 'USD',
     institution VARCHAR(200),
@@ -125,19 +125,19 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
     amount DECIMAL(12, 2) NOT NULL,
     category VARCHAR(100),
     type VARCHAR(10) NOT NULL CHECK (type IN ('income', 'expense')),
-    frequency VARCHAR(20) NOT NULL, -- daily, weekly, monthly, yearly, custom
-    interval_days INTEGER, -- For custom frequency
+    frequency VARCHAR(20) NOT NULL,
+    interval_days INTEGER,
     next_due_date DATE NOT NULL,
     end_date DATE,
     auto_create BOOLEAN DEFAULT FALSE,
-    reminder_days INTEGER[] DEFAULT ARRAY[3, 1], -- Alert 3 days and 1 day before
+    reminder_days INTEGER[] DEFAULT ARRAY[3, 1],
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- =============================================================================
--- DEBTS TABLE (For debt tracking)
+-- DEBTS TABLE
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS debts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -147,8 +147,8 @@ CREATE TABLE IF NOT EXISTS debts (
     current_balance DECIMAL(12, 2) NOT NULL,
     interest_rate DECIMAL(5, 2) DEFAULT 0,
     minimum_payment DECIMAL(12, 2),
-    due_day INTEGER, -- Day of month (1-31)
-    type VARCHAR(50), -- credit_card, student_loan, mortgage, personal_loan, etc.
+    due_day INTEGER,
+    type VARCHAR(50),
     lender VARCHAR(200),
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'paid_off', 'cancelled')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -162,13 +162,13 @@ CREATE TABLE IF NOT EXISTS investments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES user_profiles(user_id) ON DELETE CASCADE,
     name VARCHAR(200) NOT NULL,
-    type VARCHAR(50), -- stock, etf, crypto, real_estate, bond, mutual_fund
-    symbol VARCHAR(20), -- Ticker symbol
+    type VARCHAR(50),
+    symbol VARCHAR(20),
     quantity DECIMAL(18, 8) NOT NULL,
     purchase_price DECIMAL(12, 2),
     current_price DECIMAL(12, 2),
     purchase_date DATE,
-    platform VARCHAR(100), -- Robinhood, Coinbase, etc.
+    platform VARCHAR(100),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -182,14 +182,14 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id UUID NOT NULL REFERENCES user_profiles(user_id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     message TEXT,
-    type VARCHAR(50), -- budget_alert, bill_reminder, goal_progress, etc.
+    type VARCHAR(50),
     is_read BOOLEAN DEFAULT FALSE,
     link VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- =============================================================================
--- INDEXES FOR PERFORMANCE
+-- INDEXES
 -- =============================================================================
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC);
@@ -205,7 +205,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 
 -- =============================================================================
--- INSERT DEFAULT SYSTEM CATEGORIES
+-- DEFAULT CATEGORIES
 -- =============================================================================
 INSERT INTO categories (name, type, icon, color, is_system, user_id) VALUES
     ('Salary', 'income', '💼', '#10b981', TRUE, NULL),
@@ -229,10 +229,8 @@ INSERT INTO categories (name, type, icon, color, is_system, user_id) VALUES
 ON CONFLICT DO NOTHING;
 
 -- =============================================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- RLS POLICIES
 -- =============================================================================
-
--- Enable RLS on all tables
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
@@ -243,134 +241,43 @@ ALTER TABLE debts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE investments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- User Profiles: Users can only see/edit their own profile
-CREATE POLICY "Users can view own profile" ON user_profiles
-    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own profile" ON user_profiles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update own profile" ON user_profiles
-    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own transactions" ON transactions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own transactions" ON transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own transactions" ON transactions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own transactions" ON transactions FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert own profile" ON user_profiles
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view own budgets" ON budgets FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own budgets" ON budgets FOR ALL USING (auth.uid() = user_id);
 
--- Transactions: Users can only see/manage their own transactions
-CREATE POLICY "Users can view own transactions" ON transactions
-    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own goals" ON goals FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own goals" ON goals FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert own transactions" ON transactions
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view own accounts" ON accounts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own accounts" ON accounts FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can update own transactions" ON transactions
-    FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own recurring" ON recurring_transactions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own recurring" ON recurring_transactions FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete own transactions" ON transactions
-    FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own debts" ON debts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own debts" ON debts FOR ALL USING (auth.uid() = user_id);
 
--- Similar policies for other tables
-CREATE POLICY "Users can view own budgets" ON budgets
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own budgets" ON budgets
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own investments" ON investments FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own investments" ON investments FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own goals" ON goals
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own goals" ON goals
-    FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own notifications" ON notifications FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own accounts" ON accounts
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own accounts" ON accounts
-    FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view own recurring" ON recurring_transactions
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own recurring" ON recurring_transactions
-    FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view own debts" ON debts
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own debts" ON debts
-    FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view own investments" ON investments
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own investments" ON investments
-    FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view own notifications" ON notifications
-    FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own notifications" ON notifications
-    FOR ALL USING (auth.uid() = user_id);
-
--- Categories: Everyone can read system categories, users can manage their own
-CREATE POLICY "Everyone can view categories" ON categories
-    FOR SELECT USING (TRUE);
-
-CREATE POLICY "Users can insert own categories" ON categories
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can manage own categories" ON categories
-    FOR ALL USING (auth.uid() = user_id AND is_system = FALSE);
+CREATE POLICY "Everyone can view categories" ON categories FOR SELECT USING (TRUE);
+CREATE POLICY "Users can insert own categories" ON categories FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage own categories" ON categories FOR ALL USING (auth.uid() = user_id AND is_system = FALSE);
 
 -- =============================================================================
--- FUNCTIONS
+-- VIEWS
 -- =============================================================================
-
--- Function to automatically create user profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO public.user_profiles (user_id, email, full_name)
-    VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'full_name');
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger to create profile when user signs up
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply updated_at triggers to relevant tables
-CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_goals_updated_at BEFORE UPDATE ON goals
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_accounts_updated_at BEFORE UPDATE ON accounts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_recurring_updated_at BEFORE UPDATE ON recurring_transactions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_debts_updated_at BEFORE UPDATE ON debts
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_investments_updated_at BEFORE UPDATE ON investments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- =============================================================================
--- VIEWS FOR COMMON QUERIES
--- =============================================================================
-
--- View for monthly summaries
 CREATE OR REPLACE VIEW monthly_summary AS
 SELECT 
     user_id,
@@ -381,7 +288,6 @@ SELECT
 FROM transactions
 GROUP BY user_id, DATE_TRUNC('month', date);
 
--- View for category summaries
 CREATE OR REPLACE VIEW category_summary AS
 SELECT 
     user_id,
